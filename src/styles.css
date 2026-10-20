@@ -50,3 +50,24 @@
 .sync-target-info svg{color:#2563eb;flex-shrink:0}
 .sync-target-info a{color:#2563eb;text-decoration:underline;font-weight:600}
 @media(max-width:600px){.file-conflict-card,.sync-target-info{margin:16px 18px}}
+
+/* GitHub Token 연동 설정 UI */
+.github-token-section{margin:12px 26px 8px}
+.token-connected-box{display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px;font-size:11px;color:#166534}
+.token-connected-box span{display:flex;align-items:center;gap:6px}
+.token-connected-box button{font-size:10px;color:#15803d;padding:2px 6px;border:1px solid #86efac;border-radius:4px;background:#fff;cursor:pointer}
+.token-connected-box button:hover{background:#dcfce7}
+.token-setup-card{background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:12px 14px}
+.token-setup-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.token-setup-header strong{display:flex;align-items:center;gap:6px;font-size:11px;color:#1e293b}
+.token-setup-header a{font-size:10px;color:#2563eb;text-decoration:underline}
+.token-setup-desc{font-size:10px;color:#64748b;line-height:1.5;margin-bottom:8px}
+.token-input-row{display:flex;gap:6px;align-items:center}
+.token-input-row input{flex:1;padding:6px 10px;font-size:11px;border:1px solid #cbd5e1;border-radius:5px;font-family:monospace;outline:none}
+.token-input-row input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+.token-input-row button{white-space:nowrap;padding:6px 12px;font-size:11px;font-weight:600}
+.token-status-msg{font-size:10px;margin-top:6px}
+.token-status-msg.error{color:#dc2626}
+.token-status-msg.success{color:#16a34a}
+@media(max-width:600px){.github-token-section{margin:12px 18px 8px}}
+

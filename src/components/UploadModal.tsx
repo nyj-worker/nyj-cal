@@ -1,8 +1,35 @@
-import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertTriangle, Download, ArrowRight, LoaderCircle, FlaskConical, FolderGit2, Edit3, RefreshCw } from 'lucide-react';
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import {
+  UploadCloud,
+  FileSpreadsheet,
+  CheckCircle2,
+  AlertTriangle,
+  Download,
+  ArrowRight,
+  LoaderCircle,
+  FlaskConical,
+  FolderGit2,
+  Edit3,
+  RefreshCw,
+  Key,
+  Check,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import type { WeekDataset } from '../types';
 import { CATEGORY_LABEL } from '../types';
 import { downloadTemplate, parseExcelFile } from '../lib/excelParser';
+import {
+  GITHUB_OWNER,
+  GITHUB_REPO,
+  GITHUB_BRANCH,
+  GITHUB_FOLDER,
+  getStoredGitHubToken,
+  setStoredGitHubToken,
+  validateGitHubToken,
+  checkGitHubFile,
+  uploadFileToGitHub,
+} from '../lib/githubSync';
 import Modal from './Modal';
 
 function isServerApiAvailable(): boolean {
@@ -68,10 +95,71 @@ export default function UploadModal({
   const [replace, setReplace] = useState(false);
   const [rawFiles, setRawFiles] = useState<File[]>([]);
   const [fileConflict, setFileConflict] = useState(false);
+  const [existingSha, setExistingSha] = useState<string | undefined>();
   const [fileResolveMode, setFileResolveMode] = useState<'replace' | 'rename'>('replace');
   const [customFileName, setCustomFileName] = useState('');
 
+  // GitHub 토큰 관리 상태
+  const [token, setToken] = useState<string>(getStoredGitHubToken);
+  const [inputToken, setInputToken] = useState('');
+  const [tokenUser, setTokenUser] = useState('');
+  const [tokenValidating, setTokenValidating] = useState(false);
+  const [tokenError, setTokenError] = useState('');
+  const [showTokenEdit, setShowTokenEdit] = useState(!getStoredGitHubToken());
+
   const conflicts = weeks.filter(w => existingWeeks.some(e => e.id === w.id));
+
+  // 토큰 유효성 초기 확인
+  useEffect(() => {
+    if (token) {
+      let active = true;
+      validateGitHubToken(token).then(res => {
+        if (!active) return;
+        if (res.valid && res.login) {
+          setTokenUser(res.login);
+          setShowTokenEdit(false);
+        } else if (!res.valid) {
+          setShowTokenEdit(true);
+        }
+      });
+      return () => {
+        active = false;
+      };
+    }
+  }, [token]);
+
+  async function handleSaveToken() {
+    const clean = inputToken.trim();
+    if (!clean) {
+      setTokenError('토큰을 입력해 주세요.');
+      return;
+    }
+    setTokenValidating(true);
+    setTokenError('');
+    const res = await validateGitHubToken(clean);
+    setTokenValidating(false);
+    if (!res.valid) {
+      setTokenError(res.error || '유효하지 않은 토큰입니다.');
+      return;
+    }
+    setToken(clean);
+    setStoredGitHubToken(clean);
+    setTokenUser(res.login || GITHUB_OWNER);
+    setShowTokenEdit(false);
+    setInputToken('');
+
+    // 이미 선택된 파일이 있다면 새 토큰으로 GitHub 원격 파일 중복 재확인
+    if (rawFiles.length > 0) {
+      const check = await checkGitHubFile(clean, rawFiles[0].name);
+      if (check.exists) {
+        setFileConflict(true);
+        setExistingSha(check.sha);
+        setCustomFileName(suggestNewFileName(rawFiles[0].name));
+        setFileResolveMode('replace');
+        setReplace(true);
+      }
+    }
+  }
 
   async function checkServerFile(filename: string): Promise<boolean> {
     if (!isServerApiAvailable()) return false;
@@ -90,7 +178,7 @@ export default function UploadModal({
   }
 
   async function readFiles(files: File[]) {
-    const token = ++generation.current;
+    const tokenGen = ++generation.current;
     setBusy(true);
     setError('');
     setWeeks([]);
@@ -98,10 +186,11 @@ export default function UploadModal({
     setBatchWarnings([]);
     setRawFiles(files);
     setFileConflict(false);
+    setExistingSha(undefined);
 
     try {
       const parsed = (await Promise.all(files.map(parseExcelFile))).flat();
-      if (token !== generation.current) return;
+      if (tokenGen !== generation.current) return;
 
       const unique = new Map<string, WeekDataset>();
       const duplicates: string[] = [];
@@ -114,22 +203,39 @@ export default function UploadModal({
       setWeeks([...unique.values()].sort((a, b) => a.id.localeCompare(b.id)));
       setBatchWarnings(duplicates);
 
-      // 서버의 event 폴더 내 동일 파일명 존재 여부 확인
+      // 1. GitHub API 토큰이 있는 경우: 원격 GitHub 저장소(event/) 중복 여부 확인
       if (files.length > 0) {
-        const existsOnServer = await checkServerFile(files[0].name);
-        if (token === generation.current && existsOnServer) {
+        let duplicateFound = false;
+        let foundSha: string | undefined;
+
+        if (token) {
+          const ghCheck = await checkGitHubFile(token, files[0].name);
+          if (ghCheck.exists) {
+            duplicateFound = true;
+            foundSha = ghCheck.sha;
+          }
+        } else if (isServerApiAvailable()) {
+          // 로컬 개발 서버가 켜져 있는 경우
+          const existsOnServer = await checkServerFile(files[0].name);
+          if (existsOnServer) {
+            duplicateFound = true;
+          }
+        }
+
+        if (tokenGen === generation.current && duplicateFound) {
           setFileConflict(true);
+          setExistingSha(foundSha);
           setFileResolveMode('replace');
           setCustomFileName(suggestNewFileName(files[0].name));
           setReplace(true);
         }
       }
     } catch (err: unknown) {
-      if (token === generation.current) {
+      if (tokenGen === generation.current) {
         setError(err instanceof Error ? err.message : '파일을 읽는 중 오류가 발생했습니다.');
       }
     } finally {
-      if (token === generation.current) setBusy(false);
+      if (tokenGen === generation.current) setBusy(false);
     }
   }
 
@@ -153,46 +259,57 @@ export default function UploadModal({
 
     setSaving(true);
     setError('');
-    setSaveStep('event 폴더 저장 및 GitHub 업로드 중…');
+    setSaveStep('GitHub 저장소(main/event)에 커밋 및 업로드 중…');
 
     let toastMsg = '';
     const rawFile = rawFiles[0];
+    const isTestMode = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test';
 
-    // 1. 서버 API가 사용 가능한 환경(브라우저 개발 서버 등)인 경우 event 폴더 저장 및 GitHub 업로드 실행
-    if (rawFile && isServerApiAvailable()) {
-      try {
-        const finalName = (fileConflict && fileResolveMode === 'rename')
-          ? customFileName.trim()
-          : rawFile.name;
-        const base64 = await fileToBase64(rawFile);
+    if (rawFile && !isTestMode) {
+      const finalName = (fileConflict && fileResolveMode === 'rename')
+        ? customFileName.trim()
+        : rawFile.name;
+      const base64 = await fileToBase64(rawFile);
+      const shaToUse = (fileConflict && fileResolveMode === 'replace') ? existingSha : undefined;
 
-        const res = await fetch('/api/upload-event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: finalName,
-            contentBase64: base64,
-            overwrite: fileResolveMode === 'replace',
-          }),
-        });
-
-        if (res.ok) {
-          const data = (await res.json()) as { success?: boolean; filename?: string; gitPushed?: boolean; gitMessage?: string };
-          if (data.gitPushed) {
-            toastMsg = `event/${data.filename} 파일이 저장되고 GitHub(main/event)에 성공적으로 업로드되었습니다.`;
-          } else if (data.gitMessage) {
-            toastMsg = `event/${data.filename} 저장 완료 (${data.gitMessage})`;
-          }
-        } else {
-          const errData = (await res.json().catch(() => null)) as { code?: string; error?: string } | null;
-          if (errData?.code === 'EXISTS') {
-            setError(errData.error || '동일한 파일이 이미 존재합니다.');
-            setSaving(false);
-            return;
-          }
+      // 1. GitHub Token이 설정되어 있는 경우: GitHub REST API로 main/event/ 에 직접 커밋 & 업로드
+      if (token) {
+        const ghResult = await uploadFileToGitHub(token, finalName, base64, shaToUse);
+        if (!ghResult.success) {
+          setError(ghResult.error || 'GitHub 저장소 업로드에 실패했습니다. 토큰 권한을 확인해 주세요.');
+          setSaving(false);
+          setSaveStep('');
+          return;
         }
-      } catch (err: unknown) {
-        console.warn('Backend upload skipped or error:', err);
+        toastMsg = `event/${finalName} 파일이 GitHub 저장소(main/event)에 성공적으로 업로드되었습니다!`;
+      } else if (isServerApiAvailable()) {
+        // 2. 로컬 개발 서버(Vite 미들웨어) 환경 백업
+        try {
+          const res = await fetch('/api/upload-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: finalName,
+              contentBase64: base64,
+              overwrite: fileResolveMode === 'replace',
+            }),
+          });
+          if (res.ok) {
+            const data = (await res.json()) as { filename?: string; gitPushed?: boolean; gitMessage?: string };
+            if (data.gitPushed) {
+              toastMsg = `event/${data.filename} 파일이 저장되고 GitHub(main/event)에 성공적으로 업로드되었습니다.`;
+            }
+          }
+        } catch (err: unknown) {
+          console.warn('Backend upload skipped or error:', err);
+        }
+      } else {
+        // 배포 사이트인데 토큰이 등록되지 않은 경우 안내
+        setError('GitHub 저장소(main/event)에 직접 업로드하려면 아래 GitHub 토큰을 먼저 등록해 주세요.');
+        setShowTokenEdit(true);
+        setSaving(false);
+        setSaveStep('');
+        return;
       }
     }
 
@@ -232,12 +349,84 @@ export default function UploadModal({
         업로드 시 로컬 <code>event</code> 폴더에 보관되고 GitHub(main/event)에 자동으로 동기화됩니다.
       </p>
 
+      {/* GitHub 토큰 연동 설정 영역 */}
+      <div className="github-token-section">
+        {token && !showTokenEdit ? (
+          <div className="token-connected-box">
+            <span>
+              <ShieldCheck size={14} />
+              GitHub 연동 활성화됨 (<b>{tokenUser || GITHUB_OWNER}</b> 계정 권한)
+            </span>
+            <button type="button" onClick={() => setShowTokenEdit(true)}>
+              토큰 변경
+            </button>
+          </div>
+        ) : (
+          <div className="token-setup-card">
+            <div className="token-setup-header">
+              <strong>
+                <Key size={13} />
+                GitHub 저장소 자동 업로드 연동
+              </strong>
+              <a
+                href="https://github.com/settings/tokens/new?description=nyj-cal-dashboard&scopes=repo"
+                target="_blank"
+                rel="noreferrer"
+              >
+                토큰 발급하기 ↗
+              </a>
+            </div>
+            <p className="token-setup-desc">
+              배포 웹사이트에서 <code>{GITHUB_OWNER}/{GITHUB_REPO}</code> 저장소의 <code>event/</code> 폴더로 직접 엑셀을 업로드하려면 GitHub Token(개인 토큰)이 필요합니다. 최초 1회 입력 시 브라우저가 안전하게 기억합니다.
+            </p>
+            <div className="token-input-row">
+              <input
+                type="password"
+                placeholder="ghp_... 또는 gho_... 토큰 붙여넣기"
+                value={inputToken}
+                onChange={e => setInputToken(e.target.value)}
+                disabled={tokenValidating}
+                aria-label="GitHub 개인 토큰"
+              />
+              <button
+                type="button"
+                className="button primary"
+                disabled={tokenValidating || !inputToken.trim()}
+                onClick={handleSaveToken}
+              >
+                {tokenValidating ? <LoaderCircle className="spin" size={13} /> : <Check size={13} />}
+                {tokenValidating ? '확인 중…' : '연동 저장'}
+              </button>
+              {token && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => {
+                    setShowTokenEdit(false);
+                    setInputToken('');
+                    setTokenError('');
+                  }}
+                >
+                  <X size={13} />
+                  닫기
+                </button>
+              )}
+            </div>
+            {tokenError && <div className="token-status-msg error">{tokenError}</div>}
+          </div>
+        )}
+      </div>
+
       <div className="sync-target-info">
         <FolderGit2 size={14} />
         <span>
           저장 위치: <b>event/</b> 폴더 · 저장소:{' '}
-          <a href="https://github.com/nyj-worker/nyj-cal/tree/main/event" target="_blank" rel="noreferrer">
-            github.com/nyj-worker/nyj-cal/tree/main/event
+          <a
+            href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/tree/${GITHUB_BRANCH}/${GITHUB_FOLDER}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            github.com/{GITHUB_OWNER}/{GITHUB_REPO}/tree/{GITHUB_BRANCH}/{GITHUB_FOLDER}
           </a>
         </span>
       </div>
@@ -442,3 +631,4 @@ export default function UploadModal({
     </Modal>
   );
 }
+
