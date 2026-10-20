@@ -176,7 +176,8 @@ function eventManagerPlugin(): Plugin {
       setupMiddleware(server.middlewares);
     },
     closeBundle() {
-      const distEventDir = path.resolve(process.cwd(), 'dist', 'event');
+      const distDir = path.resolve(process.cwd(), 'dist');
+      const distEventDir = path.resolve(distDir, 'event');
       if (fs.existsSync(eventDir)) {
         fs.mkdirSync(distEventDir, { recursive: true });
         const files = fs.readdirSync(eventDir);
@@ -188,6 +189,10 @@ function eventManagerPlugin(): Plugin {
           }
         }
       }
+
+      // GitHub Pages의 'main 브랜치 /docs 폴더' 호스팅을 위해 완성된 배포 파일을 docs 폴더로 자동 복사
+      const docsDir = path.resolve(process.cwd(), 'docs');
+      fs.cpSync(distDir, docsDir, { recursive: true });
     },
   };
 }
