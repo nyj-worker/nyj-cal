@@ -30,3 +30,23 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 @page{size:A4 landscape;margin:9mm}
 @media print{html,body{background:#fff!important;color:#111!important;font-size:9pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}.app-header,.page-intro,.stats-grid,.calendar-toolbar,.category-tabs,.filters,.result-info,.screen-calendar,.app-footer,.toast,.modal,.sample-preview-banner,.notice{display:none!important}body:has(dialog[open]){overflow:visible!important}dialog::backdrop{display:none!important}.main-content{padding:0;margin:0;max-width:none}.calendar-panel{border:0;border-radius:0;box-shadow:none;overflow:visible}.print-calendar{display:block!important}.print-calendar>h1{font-size:17pt;font-weight:700;margin:0 0 3mm;text-align:center}.print-calendar>p{text-align:center;font-size:9pt;color:#555;margin-bottom:5mm}.print-calendar table{table-layout:fixed;width:100%;border-collapse:collapse}.print-calendar th{border:1px solid #becbd9;background:#e9eef5;padding:2.5mm 1mm;font-size:10pt;color:#243e5e}.print-calendar td{vertical-align:top;border:1px solid #c9d3df;padding:1.5mm;width:14.285%}.print-calendar article{padding:1.4mm 1.5mm;border-left:2px solid #4a71aa;background:#f1f5fc;margin-bottom:2mm;break-inside:avoid;overflow-wrap:anywhere;word-break:keep-all}.print-calendar article.director{border-color:#368e76;background:#edf6f1}.print-calendar article>strong{display:block;color:#4b668d;font-size:7pt;margin-bottom:1mm}.print-calendar article.director>strong{color:#327762}.print-calendar article>b{display:block;font-weight:650;font-size:8pt;line-height:1.5;margin-bottom:1mm}.print-calendar article>span,.print-calendar article>small{display:block;font-size:6.8pt;line-height:1.5;color:#606d7b}.print-calendar footer{margin-top:3mm;font-size:7pt;color:#6e7e90}.print-calendar tr{break-inside:avoid}*{box-shadow:none!important}}
+
+/* 엑셀 파일 중복 해결 및 GitHub 업로드 UI 스타일 */
+.file-conflict-card{margin:16px 26px;border:1px solid #f2c79b;background:#fff9f2;border-radius:8px;padding:14px 16px}
+.file-conflict-header{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#b56114;margin-bottom:8px}
+.file-conflict-desc{font-size:11px;color:#8c5b29;line-height:1.6;margin-bottom:12px}
+.file-conflict-desc code{background:#fcebd9;padding:2px 5px;border-radius:4px;font-weight:600;color:#9c4b00}
+.conflict-options-group{display:flex;flex-direction:column;gap:9px}
+.conflict-option-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid #ebd2ba;background:#ffffff;border-radius:6px;cursor:pointer;transition:all .15s ease}
+.conflict-option-item.selected{border-color:#2b5ea7;background:#f4f8fd}
+.conflict-option-item input[type="radio"]{margin-top:3px;accent-color:#2b5ea7}
+.conflict-option-content{flex:1}
+.conflict-option-content strong{display:block;font-size:12px;color:#263d5b}
+.conflict-option-content span{display:block;font-size:10px;color:#798da3;margin-top:2px}
+.rename-input-box{margin-top:8px;display:flex;align-items:center;gap:6px}
+.rename-input-box input{flex:1;padding:7px 10px;font-size:11px;border:1px solid #b7cbe3;border-radius:5px;color:#1a3250;outline:none}
+.rename-input-box input:focus{border-color:#2b5ea7;box-shadow:0 0 0 2px rgba(43,94,167,.15)}
+.sync-target-info{display:flex;align-items:center;gap:6px;font-size:10px;color:#64748b;margin:12px 26px 4px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px}
+.sync-target-info svg{color:#2563eb;flex-shrink:0}
+.sync-target-info a{color:#2563eb;text-decoration:underline;font-weight:600}
+@media(max-width:600px){.file-conflict-card,.sync-target-info{margin:16px 18px}}

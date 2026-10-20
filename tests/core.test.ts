@@ -26,8 +26,8 @@ describe('실제 제공 엑셀', () => {
     const result = parseWorkbook(wb, '주간행사계획_20261019_20261025.xlsx');
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(ref);
-    expect(result[0].events).toHaveLength(28);
-    expect(result[0].summaries.map(s => s.count)).toEqual([24, 4]);
+    expect(result[0].events).toHaveLength(29);
+    expect(result[0].summaries.map(s => s.count)).toEqual([24, 5]);
     expect(result[0].warnings).toEqual([]);
     const first = result[0].events.find(e => e.title === '제10회 이·통장 한마음 체육대회')!;
     expect(first).toMatchObject({ date: ref, startTime: '10:00', endTime: '11:00', attendees: '시장', targetRole: '시장', endEstimated: true });
@@ -36,7 +36,7 @@ describe('실제 제공 엑셀', () => {
     const directors = result[0].events.filter(e => e.category === 'DIRECTOR');
     expect(directors.every(e => e.attendees === '교통국장')).toBe(true);
     expect(directors[0]).toMatchObject({ department: '교통정책과', notes: '교통정책팀' });
-    expect(new Set(result[0].events.map(e => e.id)).size).toBe(28);
+    expect(new Set(result[0].events.map(e => e.id)).size).toBe(29);
   });
 });
 

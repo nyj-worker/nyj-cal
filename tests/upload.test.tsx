@@ -32,15 +32,15 @@ describe('실제 파일 업로드 모달 흐름', () => {
     const onClose = vi.fn();
     render(<UploadModal existingWeeks={[{ ...existing, events: existing.events.slice(0, 5) }]} onSave={onSave} onClose={onClose} onSample={vi.fn()} />);
     fireEvent.change(screen.getByLabelText('주간행사 엑셀 파일 선택'), { target: { files: [file] } });
-    await screen.findByText('1개 주차 · 28건 인식 완료');
-    expect(screen.getByText('24건')).toBeTruthy(); expect(screen.getByText('4건')).toBeTruthy();
+    await screen.findByText('1개 주차 · 29건 인식 완료');
+    expect(screen.getByText('24건')).toBeTruthy(); expect(screen.getByText('5건')).toBeTruthy();
     const save = screen.getByRole('button', { name: '확인한 주차 교체 및 저장' }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
     await userEvent.click(screen.getByRole('checkbox'));
     expect(save.disabled).toBe(false);
     await userEvent.click(save);
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave.mock.calls[0][0][0].events).toHaveLength(28);
+    expect(onSave.mock.calls[0][0][0].events).toHaveLength(29);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
   it('다른 주차의 일정은 교체 확인 없이 추가하며 저장 실패를 표시한다', async () => {
@@ -49,7 +49,7 @@ describe('실제 파일 업로드 모달 흐름', () => {
     const sample = { ...createSampleWeek(), id: '2026-10-12' };
     render(<UploadModal existingWeeks={[sample]} onSave={onSave} onClose={onClose} onSample={vi.fn()} />);
     fireEvent.change(screen.getByLabelText('주간행사 엑셀 파일 선택'), { target: { files: [actualFile()] } });
-    await screen.findByText('1개 주차 · 28건 인식 완료');
+    await screen.findByText('1개 주차 · 29건 인식 완료');
     expect(screen.queryByRole('checkbox')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: '주간 일정 저장하기' }));
     await screen.findByRole('alert');

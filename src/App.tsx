@@ -57,12 +57,12 @@ export default function App() {
     document.addEventListener('pointerdown', click); document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('pointerdown', click); document.removeEventListener('keydown', escape); };
   }, [exportOpen]);
-  const save = useCallback(async (incoming: WeekDataset[]) => {
+  const save = useCallback(async (incoming: WeekDataset[], customToast?: string) => {
     await saveWeeks(incoming);
     setWeeks(previous => [...previous.filter(w => !incoming.some(n => n.id === w.id)), ...incoming].sort((a, b) => a.id.localeCompare(b.id)));
     setState(previous => ({ ...previous, selectedWeek: incoming.at(-1)!.id, category: 'ALL', query: '', roles: [], time: 'ALL' }));
     setSamplePreview(null); setStorageError('');
-    setToast(`${incoming.length}개 주차, ${incoming.reduce((sum, w) => sum + w.events.length, 0)}건의 일정을 저장했습니다.`);
+    setToast(customToast || `${incoming.length}개 주차, ${incoming.reduce((sum, w) => sum + w.events.length, 0)}건의 일정을 저장했습니다.`);
   }, []);
   const update = (patch: Partial<ViewState>) => setState(previous => ({ ...previous, ...patch }));
   const clearFilters = () => update({ category: 'ALL', query: '', roles: [], time: 'ALL' });
